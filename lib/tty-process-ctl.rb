@@ -4,8 +4,9 @@ require 'pty'
 class TTYProcessCtl
 	include Enumerable
 
-	def initialize(command)
-		@max_queue = 4000
+	def initialize(command, options = {})
+		@max_queue_length = options[:max_queue_length] || 4000
+		@max_messages = options[:max_messages] || 4000
 		@command = command
 
 		@out_queue = Queue.new
@@ -13,47 +14,49 @@ class TTYProcessCtl
 
 		@r, @w, @pid = PTY.spawn(@command)
 		@thread = Thread.start do
-			abort_on_exception = true
-			@r.each_line do |line|
-				enqueue_message line
+			begin
+				abort_on_exception = true
+				@r.each_line do |line|
+					enqueue_message line
+				end
+			ensure
+				enqueue_control_message :exit
+				@exit_status = PTY.check(@pid)
 			end
-			enqueue_control_message :exit
 		end
 	end
 
-	def enqueue_message(message)
-		@out_queue << message
-		@out_queue.pop while @out_queue.length > @max_queue
-	end
-
-	def enqueue_control_message(message)
-		@out_queue << message.to_sym
-	end
+	attr_reader :exit_status
 
 	def alive?
-		! PTY.check(@pid) and @thread.alive?
+		@thread.alive?
 	end
 
 	def send_command(command)
 		@w.puts command
+	rescue Errno::EIO
+		raise IOError.new("process '#{@command}' (pid: #{@pid}) not accepting input")
 	end
 
 	def messages
-		@messages.join
+		@messages
 	end
 
 	def each
 		return enum_for(:each) unless block_given?
-		loop do
-			break unless alive?
+		while !@out_queue.empty? or alive? do
 			message = @out_queue.pop
+
 			break if message.is_a? Symbol and message == :exit
 			@messages << message
+			@messages.pop while @messages.length > @max_messages
+
 			yield message 
 		end
 	end
 
 	def each_until(pattern)
+		return enum_for(:each_until, pattern) unless block_given?
 		each do |message|
 			yield message
 			break if message =~ pattern
@@ -61,10 +64,16 @@ class TTYProcessCtl
 	end
 
 	def each_until_exclude(pattern)
+		return enum_for(:each_until_exclude, pattern) unless block_given?
 		each do |message|
 			break if message =~ pattern
 			yield message
 		end
+	end
+
+	def wait
+		each{}
+		@thread.join
 	end
 
 	def flush
@@ -72,6 +81,17 @@ class TTYProcessCtl
 			@messages << @out_queue.pop(true)
 		end
 	rescue ThreadError
+	end
+
+	private
+
+	def enqueue_message(message)
+		@out_queue << message
+		@out_queue.pop while @out_queue.length > @max_queue_length
+	end
+
+	def enqueue_control_message(message)
+		@out_queue << message.to_sym
 	end
 end
 
