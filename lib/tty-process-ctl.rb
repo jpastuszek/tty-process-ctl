@@ -19,9 +19,12 @@ class TTYProcessCtl
 				@r.each_line do |line|
 					enqueue_message line
 				end
+			rescue Errno::EIO
 			ensure
-				enqueue_control_message :exit
 				@exit_status = PTY.check(@pid)
+				enqueue_control_message :exit
+				@r.close
+				@w.close
 			end
 		end
 	end
@@ -45,13 +48,7 @@ class TTYProcessCtl
 	def each
 		return enum_for(:each) unless block_given?
 		while !@out_queue.empty? or alive? do
-			message = @out_queue.pop
-
-			break if message.is_a? Symbol and message == :exit
-			@messages << message
-			@messages.pop while @messages.length > @max_messages
-
-			yield message 
+			yield (dequeue or break)
 		end
 	end
 
@@ -77,17 +74,25 @@ class TTYProcessCtl
 	end
 
 	def wait_until(pattern)
-		each_until(pattern).to_a
+		each_until(pattern){}
 	end
 
 	def flush
 		loop do
-			@messages << @out_queue.pop(true)
+			dequeue(true)
 		end
 	rescue ThreadError
 	end
 
 	private
+
+	def dequeue(block = false)
+		message = @out_queue.pop(block)
+		return nil if message.is_a? Symbol and message == :exit
+		@messages << message
+		@messages.pop while @messages.length > @max_messages
+		message
+	end
 
 	def enqueue_message(message)
 		@out_queue << message
