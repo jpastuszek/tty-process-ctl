@@ -22,9 +22,9 @@ class TTYProcessCtl
 			rescue Errno::EIO
 			ensure
 				@exit_status = PTY.check(@pid)
-				enqueue_control_message :exit
 				@r.close
 				@w.close
+				enqueue_end
 			end
 		end
 	end
@@ -88,7 +88,7 @@ class TTYProcessCtl
 
 	def dequeue(block = false)
 		message = @out_queue.pop(block)
-		return nil if message.is_a? Symbol and message == :exit
+		return nil unless message
 		@messages << message
 		@messages.pop while @messages.length > @max_messages
 		message
@@ -99,8 +99,8 @@ class TTYProcessCtl
 		@out_queue.pop while @out_queue.length > @max_queue_length
 	end
 
-	def enqueue_control_message(message)
-		@out_queue << message.to_sym
+	def enqueue_end
+		@out_queue << nil
 	end
 end
 
