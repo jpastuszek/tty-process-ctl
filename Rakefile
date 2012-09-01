@@ -17,8 +17,8 @@ Jeweler::Tasks.new do |gem|
   gem.name = "tty-process-ctl"
   gem.homepage = "http://github.com/jpastuszek/tty-process-ctl"
   gem.license = "MIT"
-  gem.summary = %Q{TODO: one-line summary of your gem}
-  gem.description = %Q{TODO: longer description of your gem}
+  gem.summary = %Q{Control of interactive terminal applications via simple API.}
+  gem.description = %Q{This gem was created to enable control of interactive terminal applications. It is using pseudo tty to communicate with the process via simple API.}
   gem.email = "jpastuszek@gmail.com"
   gem.authors = ["Jakub Pastuszek"]
   # dependencies defined in Gemfile
