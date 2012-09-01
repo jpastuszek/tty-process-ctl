@@ -71,9 +71,13 @@ class TTYProcessCtl
 		end
 	end
 
-	def wait
+	def wait_exit
 		each{}
 		@thread.join
+	end
+
+	def wait_until(pattern)
+		each_until(pattern).to_a
 	end
 
 	def flush

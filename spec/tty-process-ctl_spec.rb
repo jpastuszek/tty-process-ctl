@@ -39,6 +39,11 @@ describe TTYProcessCtl do
 		it 'should allow iteration until pattern is found in message excluding that message' do
 			subject.each_until_exclude(/NOT ENOUGH RAM/).to_a.last.should == "2011-09-10 12:58:55 [INFO] Starting minecraft server version Beta 1.7.3\r\n"
 		end
+
+		it 'should allow waiting for message matching pattern' do
+			subject.wait_until(/NOT ENOUGH RAM/)
+			subject.each.to_a.first.should == "2011-09-10 12:58:55 [WARNING] To start the server with more ram, launch it as \"java -Xmx1024M -Xms1024M -jar minecraft_server.jar\"\r\n"
+		end
 	end
 
 	describe 'sending commands' do
@@ -63,7 +68,7 @@ describe TTYProcessCtl do
 
 		it 'should raise error when sending command to dead process' do
 			subject.send_command 'stop'
-			subject.wait
+			subject.wait_exit
 
 			expect {
 				subject.send_command 'help'
@@ -111,7 +116,7 @@ describe TTYProcessCtl do
 		it 'should allow waiting for porcess to exit' do
 			subject.should be_alive
 			subject.send_command 'stop'
-			subject.wait
+			subject.wait_exit
 			subject.should_not be_alive
 		end
 
@@ -135,7 +140,7 @@ describe TTYProcessCtl do
 
 			sleep 0.2
 			subject.each.to_a.length.should == 2
-			subject.wait
+			subject.wait_exit
 		end
 
 		it 'should allow defining maximum number of messages that can be remembered' do
@@ -145,7 +150,7 @@ describe TTYProcessCtl do
 			subject.send_command 'help'
 			subject.flush
 			subject.send_command 'stop'
-			subject.wait
+			subject.wait_exit
 
 			subject.messages.length.should == 2
 		end
