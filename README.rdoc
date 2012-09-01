@@ -1,6 +1,58 @@
 = tty-process-ctl
 
-Description goes here.
+This gem was created to enable control of interactive terminal applications.
+It is using pseudo tty to communicate with the process via simple API.
+
+== Example
+
+=== Reading program output
+
+Here we run 'ls' command and iterate its output:
+
+<code>
+TTYProcessCtl.new('ls').each do |line|
+	puts line
+end
+</code>
+
+Result:
+
+<tt>
+Gemfile      LICENSE.txt  Rakefile     lib
+Gemfile.lock README.rdoc  examples     spec
+</tt>
+
+=== irb example
+
+This example show how to send command to irb process.
+Output can be skipped with wait_until and iterated until pattern matches wit each_until.
+
+<code>
+irb = TTYProcessCtl.new('irb')
+
+# send command
+irb.send_command('2 + 2')
+
+# wait until prompt line was printed
+irb.wait_until(/:001 >/)
+
+# print all output lines until we get to the result line (including) 
+irb.each_until(/=>/) do |line|
+	puts line
+end
+
+# ask irb to quit
+irb.send_command('quit')
+
+# wait irb to exit
+irb.wait_exit
+<code>
+
+Result:
+
+<tt>
+ => 4
+</tt>
 
 == Contributing to tty-process-ctl
  
