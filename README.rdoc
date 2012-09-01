@@ -9,42 +9,42 @@ It is using pseudo tty to communicate with the process via simple API.
 
 Here we run 'ls' command and iterate its output:
 
-	TTYProcessCtl.new('ls').each do |line|
-		puts line
-	end
+  TTYProcessCtl.new('ls').each do |line|
+  	puts line
+  end
 
 Result:
 
-	Gemfile      LICENSE.txt  Rakefile     lib
-	Gemfile.lock README.rdoc  examples     spec
+  Gemfile      LICENSE.txt  Rakefile     lib
+  Gemfile.lock README.rdoc  examples     spec
 
 === irb example
 
 This example show how to send command to irb process.
 Output can be skipped with wait_until and iterated until pattern matches wit each_until.
 
-	irb = TTYProcessCtl.new('irb')
-
-	# send command
-	irb.send_command('2 + 2')
-
-	# wait until prompt line was printed
-	irb.wait_until(/:001 >/)
-
-	# print all output lines until we get to the result line (including) 
-	irb.each_until(/=>/) do |line|
-		puts line
-	end
-
-	# ask irb to quit
-	irb.send_command('quit')
-
-	# wait irb to exit
-	irb.wait_exit
+  irb = TTYProcessCtl.new('irb')
+  
+  # send command
+  irb.send_command('2 + 2')
+  
+  # wait until prompt line was printed
+  irb.wait_until(/:001 >/)
+  
+  # print all output lines until we get to the result line (including) 
+  irb.each_until(/=>/) do |line|
+  	puts line
+  end
+  
+  # ask irb to quit
+  irb.send_command('quit')
+  
+  # wait irb to exit
+  irb.wait_exit
 
 Result:
 
-	 => 4
+   => 4
 
 == Contributing to tty-process-ctl
  
