@@ -1,7 +1,11 @@
 require 'thread'
+require 'timeout'
 require 'pty'
 
 class TTYProcessCtl
+	class Timeout < Timeout::Error
+	end
+
 	include Enumerable
 
 	def initialize(command, options = {})
@@ -45,36 +49,38 @@ class TTYProcessCtl
 		@messages
 	end
 
-	def each
-		return enum_for(:each) unless block_given?
-		while !@out_queue.empty? or alive? do
-			yield (dequeue or break)
+	def each(options = {})
+		return enum_for(:each, options) unless block_given?
+		timeout(options[:timeout]) do
+			while !@out_queue.empty? or alive? do
+				yield (dequeue or break)
+			end
 		end
 	end
 
-	def each_until(pattern)
-		return enum_for(:each_until, pattern) unless block_given?
-		each do |message|
+	def each_until(pattern, options = {})
+		return enum_for(:each_until, pattern, options) unless block_given?
+		each(options) do |message|
 			yield message
 			break if message =~ pattern
 		end
 	end
 
-	def each_until_exclude(pattern)
-		return enum_for(:each_until_exclude, pattern) unless block_given?
-		each do |message|
+	def each_until_exclude(pattern, options = {})
+		return enum_for(:each_until_exclude, pattern, options) unless block_given?
+		each(options) do |message|
 			break if message =~ pattern
 			yield message
 		end
 	end
 
-	def wait_exit
-		each{}
+	def wait_until(pattern, options = {})
+		each_until(pattern, options){}
+	end
+
+	def wait_exit(options = {})
+		each(options){}
 		@thread.join
-	end
-
-	def wait_until(pattern)
-		each_until(pattern){}
 	end
 
 	def flush
@@ -85,6 +91,14 @@ class TTYProcessCtl
 	end
 
 	private
+
+	def timeout(t)
+		yield unless t
+
+		::Timeout::timeout(t, Timeout) do
+			yield
+		end
+	end
 
 	def dequeue(block = false)
 		message = @out_queue.pop(block)

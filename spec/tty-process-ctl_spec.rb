@@ -155,5 +155,100 @@ describe TTYProcessCtl do
 			subject.messages.length.should == 2
 		end
 	end
+
+	describe 'timeout' do
+		subject do
+			TTYProcessCtl.new('spec/stub')
+		end
+
+		after :each do
+			subject.send_command 'stop' if subject.alive?
+			subject.wait_exit
+		end
+
+		describe 'each calls with block' do
+			it 'should raise TTYProcessCtl::Timeout on timieout' do
+				expect {
+					subject.each(timeout: 0.1) {}
+				}.to raise_error TTYProcessCtl::Timeout
+
+				expect {
+					subject.each_until(/bogous/, timeout: 0.1) {}
+				}.to raise_error TTYProcessCtl::Timeout
+
+				expect {
+					subject.each_until_exclude(/bogous/, timeout: 0.1) {}
+				}.to raise_error TTYProcessCtl::Timeout
+			end
+
+			it 'should not raise error if they return before timeout' do
+				expect {
+					subject.each_until(/recipes/, timeout: 1) {}
+				}.to_not raise_error TTYProcessCtl::Timeout
+
+				expect {
+					subject.each_until_exclude(/achievements/, timeout: 1) {}
+				}.to_not raise_error TTYProcessCtl::Timeout
+
+				expect {
+					subject.each(timeout: 1) { break }
+				}.to_not raise_error TTYProcessCtl::Timeout
+			end
+		end
+
+		describe 'each calls with use of Enumerator object' do
+			it 'should raise TTYProcessCtl::Timeout on timieout' do
+				expect {
+					subject.each(timeout: 0.1).to_a
+				}.to raise_error TTYProcessCtl::Timeout
+
+				expect {
+					subject.each_until(/bogous/, timeout: 0.1).to_a
+				}.to raise_error TTYProcessCtl::Timeout
+
+				expect {
+					subject.each_until_exclude(/bogous/, timeout: 0.1).to_a
+				}.to raise_error TTYProcessCtl::Timeout
+			end
+
+			it 'should not raise error if they return before timeout' do
+				expect {
+					subject.each_until(/recipes/, timeout: 1).to_a
+				}.to_not raise_error TTYProcessCtl::Timeout
+
+				expect {
+					subject.each_until_exclude(/achievements/, timeout: 1).to_a
+				}.to_not raise_error TTYProcessCtl::Timeout
+
+				expect {
+					subject.each(timeout: 1).first
+				}.to_not raise_error TTYProcessCtl::Timeout
+			end
+		end
+
+		describe 'wait calls' do
+			it 'should raise TTYProcessCtl::Timeout on timieout' do
+				expect {
+					subject.wait_until(/bogous/, timeout: 0.1)
+				}.to raise_error TTYProcessCtl::Timeout
+
+				expect {
+					subject.wait_exit(timeout: 0.1)
+				}.to raise_error TTYProcessCtl::Timeout
+			end
+
+			it 'should not raise error if they return before timeout' do
+				expect {
+					subject.wait_until(/Done/, timeout: 1)
+				}.to_not raise_error TTYProcessCtl::Timeout
+
+				subject.send_command 'stop'
+
+				expect {
+					subject.wait_exit(timeout: 1)
+				}.to_not raise_error TTYProcessCtl::Timeout
+			end
+		end
+	end
 end
 
