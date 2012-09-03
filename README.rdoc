@@ -51,7 +51,7 @@ Result:
 == Timeout support
 
 Normally *each* and *wait* methods will wait infinitely for event to happen.
-They accept options hash as additional argument where 'timeout' key value will be respected as number of seconds after which the method will rise TTYProcessCtl::Timeout exception if awaited event did not happen:
+They accept options hash as additional argument where *:timeout* key value will be respected as number of seconds after which the method will rise TTYProcessCtl::Timeout exception if awaited event did not happen:
 
    TTYProcessCtl.new('sleep 10').wait_until(/Done/, timeout: 1) => TTYProcessCtl::Timeout
 
