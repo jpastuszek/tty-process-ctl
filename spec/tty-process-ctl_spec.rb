@@ -157,10 +157,6 @@ describe TTYProcessCtl do
 	end
 
 	describe 'timeout' do
-		subject do
-			TTYProcessCtl.new('spec/stub')
-		end
-
 		after :each do
 			subject.send_command 'stop' if subject.alive?
 			subject.wait_exit
@@ -248,6 +244,27 @@ describe TTYProcessCtl do
 					subject.wait_exit(timeout: 1)
 				}.to_not raise_error TTYProcessCtl::Timeout
 			end
+		end
+	end
+
+	describe 'chaining' do
+		subject do
+			TTYProcessCtl.new('spec/stub --exit')
+		end
+
+		it 'should work with each methods' do
+			subject.each_until(/recipes/){}.should == subject
+			subject.each_until_exclude(/achievements/){}.should == subject
+			subject.each{}.should == subject
+		end
+		
+		it 'should work with wait methods' do
+			subject.wait_until(/Done/){}.should == subject
+			subject.wait_exit{}.should == subject
+		end
+
+		it 'should work with flush method' do
+			subject.flush.should == subject
 		end
 	end
 end

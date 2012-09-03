@@ -55,6 +55,18 @@ They accept options hash as additional argument where *:timeout* key value will 
 
    TTYProcessCtl.new('sleep 10').wait_until(/Done/, timeout: 1) => TTYProcessCtl::Timeout
 
+== Chaining
+
+All *each*, *wait* and *flush* methods can be chained:
+
+  TTYProcessCtl.new('echo "abc\ndef\nghi"').wait_until(/def/).each do |line|
+  	puts line
+  end
+
+Result:
+
+  ghi
+
 == Contributing to tty-process-ctl
  
 * Check out the latest master to make sure the feature hasn't been implemented or the bug hasn't been fixed yet.

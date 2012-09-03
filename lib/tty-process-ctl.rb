@@ -56,6 +56,7 @@ class TTYProcessCtl
 				yield (dequeue or break)
 			end
 		end
+		self
 	end
 
 	def each_until(pattern, options = {})
@@ -64,6 +65,7 @@ class TTYProcessCtl
 			yield message
 			break if message =~ pattern
 		end
+		self
 	end
 
 	def each_until_exclude(pattern, options = {})
@@ -72,6 +74,7 @@ class TTYProcessCtl
 			break if message =~ pattern
 			yield message
 		end
+		self
 	end
 
 	def wait_until(pattern, options = {})
@@ -81,13 +84,16 @@ class TTYProcessCtl
 	def wait_exit(options = {})
 		each(options){}
 		@thread.join
+		self
 	end
 
 	def flush
 		loop do
 			dequeue(true)
 		end
+		self
 	rescue ThreadError
+		self
 	end
 
 	private
