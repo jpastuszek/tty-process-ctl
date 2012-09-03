@@ -5,9 +5,7 @@ It is using pseudo TTY to communicate with the process via simple API.
 
 For more advanced gem see also: https://github.com/avdi/greenletters
 
-== Example
-
-=== Reading program output
+== Reading program output
 
 Here we run *ls* command and iterate its output:
 
@@ -20,7 +18,7 @@ Result:
   Gemfile      LICENSE.txt  Rakefile     lib
   Gemfile.lock README.rdoc  examples     spec
 
-=== Sending commands
+== Sending commands
 
 This example show how to send command to *irb* process.
 Output can be skipped with *wait_until* and iterated until pattern matches with *each_until*:
