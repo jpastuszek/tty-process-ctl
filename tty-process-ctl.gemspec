@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = "tty-process-ctl"
-  s.version = "0.2.0"
+  s.version = "0.3.0"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Jakub Pastuszek"]
-  s.date = "2012-09-03"
+  s.date = "2012-11-18"
   s.description = "This gem was created to enable control of interactive terminal applications. It is using pseudo tty to communicate with the process via simple API."
   s.email = "jpastuszek@gmail.com"
   s.extra_rdoc_files = [
@@ -37,7 +37,7 @@ Gem::Specification.new do |s|
   s.homepage = "http://github.com/jpastuszek/tty-process-ctl"
   s.licenses = ["MIT"]
   s.require_paths = ["lib"]
-  s.rubygems_version = "1.8.23"
+  s.rubygems_version = "1.8.15"
   s.summary = "Control of interactive terminal applications via simple API."
 
   if s.respond_to? :specification_version then
