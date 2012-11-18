@@ -1,6 +1,7 @@
 require 'thread'
 require 'timeout'
 require 'pty'
+require 'io/console'
 
 class TTYProcessCtl
 	class Timeout < Timeout::Error
@@ -17,6 +18,7 @@ class TTYProcessCtl
 		@messages = []
 
 		@r, @w, @pid = PTY.spawn(@command)
+		@w.echo = false # disable echoing of commands
 		@thread = Thread.start do
 			begin
 				abort_on_exception = true

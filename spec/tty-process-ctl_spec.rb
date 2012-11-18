@@ -60,10 +60,10 @@ describe TTYProcessCtl do
 			subject.each.to_a.last.should == "2011-09-19 22:12:00 [INFO] Saving chunks"
 		end
 
-		it 'should echo sent command' do
+		it 'should not echo sent command' do
 			subject.each_until(/Done/).to_a
 			subject.send_command 'stop'
-			subject.each.to_a.first.should == "stop"
+			subject.each.to_a.first.should_not == "stop"
 		end
 
 		it 'should raise error when sending command to dead process' do
@@ -86,7 +86,7 @@ describe TTYProcessCtl do
 			subject.messages.length.should == 20
 		end
 
-		describe 'message flushing' do
+		describe 'flushing' do
 			subject do
 				TTYProcessCtl.new('spec/stub')
 			end
@@ -98,7 +98,7 @@ describe TTYProcessCtl do
 				subject.flush
 
 				subject.send_command 'list'
-				subject.each_until(/Connected players/).to_a.should == ["list", "2011-09-20 14:42:04 [INFO] Connected players: kazuya"]
+				subject.each_until(/Connected players/).to_a.should == ["2011-09-20 14:42:04 [INFO] Connected players: kazuya"]
 
 				subject.send_command 'stop'
 			end
