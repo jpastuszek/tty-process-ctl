@@ -106,8 +106,8 @@ class TTYProcessCtl
 		end
 	end
 
-	def dequeue(block = false)
-		message = @out_queue.pop(block)
+	def dequeue(no_block = false)
+		message = @out_queue.pop(no_block)
 		return nil unless message
 		@messages << message
 		@messages.pop while @messages.length > @max_messages
