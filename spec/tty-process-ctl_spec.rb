@@ -24,7 +24,7 @@ describe TTYProcessCtl do
 
 		it 'should be Enumerable' do
 			subject.should respond_to :take
-			subject.take(2).should == ["151 recipes\r\n", "16 achievements\r\n"]
+			subject.take(2).should == ["151 recipes", "16 achievements"]
 		end
 
 		it 'should return nothing if iterating on dead process' do
@@ -33,37 +33,37 @@ describe TTYProcessCtl do
 		end
 
 		it 'should allow iteration until pattern is found in message' do
-			subject.each_until(/NOT ENOUGH RAM/).to_a.last.should == "2011-09-10 12:58:55 [WARNING] **** NOT ENOUGH RAM!\r\n"
+			subject.each_until(/NOT ENOUGH RAM/).to_a.last.should == "2011-09-10 12:58:55 [WARNING] **** NOT ENOUGH RAM!"
 		end
 
 		it 'should allow iteration until pattern is found in message excluding that message' do
-			subject.each_until_exclude(/NOT ENOUGH RAM/).to_a.last.should == "2011-09-10 12:58:55 [INFO] Starting minecraft server version Beta 1.7.3\r\n"
+			subject.each_until_exclude(/NOT ENOUGH RAM/).to_a.last.should == "2011-09-10 12:58:55 [INFO] Starting minecraft server version Beta 1.7.3"
 		end
 
 		it 'should allow waiting for message matching pattern' do
 			subject.wait_until(/NOT ENOUGH RAM/)
-			subject.each.to_a.first.should == "2011-09-10 12:58:55 [WARNING] To start the server with more ram, launch it as \"java -Xmx1024M -Xms1024M -jar minecraft_server.jar\"\r\n"
+			subject.each.to_a.first.should == "2011-09-10 12:58:55 [WARNING] To start the server with more ram, launch it as \"java -Xmx1024M -Xms1024M -jar minecraft_server.jar\""
 		end
 	end
 
 	describe 'sending commands' do
 		it 'should allow sending commands to controled process' do
 			subject.send_command 'stop'
-			subject.each.to_a.last.should == "2011-09-19 22:12:00 [INFO] Saving chunks\r\n"
+			subject.each.to_a.last.should == "2011-09-19 22:12:00 [INFO] Saving chunks"
 		end
 
 		it 'should allow sending commands and iterating output' do
 			subject.send_command 'list'
-			subject.each_until(/Connected players/).to_a.last.should == "2011-09-20 14:42:04 [INFO] Connected players: kazuya\r\n"
+			subject.each_until(/Connected players/).to_a.last.should == "2011-09-20 14:42:04 [INFO] Connected players: kazuya"
 
 			subject.send_command 'stop'
-			subject.each.to_a.last.should == "2011-09-19 22:12:00 [INFO] Saving chunks\r\n"
+			subject.each.to_a.last.should == "2011-09-19 22:12:00 [INFO] Saving chunks"
 		end
 
 		it 'should echo sent command' do
 			subject.each_until(/Done/).to_a
 			subject.send_command 'stop'
-			subject.each.to_a.first.should == "stop\r\n"
+			subject.each.to_a.first.should == "stop"
 		end
 
 		it 'should raise error when sending command to dead process' do
@@ -98,7 +98,7 @@ describe TTYProcessCtl do
 				subject.flush
 
 				subject.send_command 'list'
-				subject.each_until(/Connected players/).to_a.should == ["list\r\n", "2011-09-20 14:42:04 [INFO] Connected players: kazuya\r\n"]
+				subject.each_until(/Connected players/).to_a.should == ["list", "2011-09-20 14:42:04 [INFO] Connected players: kazuya"]
 
 				subject.send_command 'stop'
 			end

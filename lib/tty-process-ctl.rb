@@ -21,7 +21,7 @@ class TTYProcessCtl
 			begin
 				abort_on_exception = true
 				@r.each_line do |line|
-					enqueue_message line
+					enqueue_message line.chop
 				end
 			rescue Errno::EIO
 			ensure
