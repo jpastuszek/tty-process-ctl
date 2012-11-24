@@ -5,31 +5,45 @@ describe TTYProcessCtl do
 		TTYProcessCtl.new('spec/stub')
 	end
 
-	describe 'process output enumeration' do
-		subject do
-			TTYProcessCtl.new('spec/stub --exit')
-		end
+	after :each do
+		subject.send_command 'stop' if subject.alive?
+		subject.wait_exit
+	end
 
+	it 'should be Enumerable' do
+		subject.should respond_to :take
+		subject.take(2).should == ["151 recipes", "16 achievements"]
+	end
+
+	it 'should skip oldest messages if backlog queue is full' do
+		subject = TTYProcessCtl.new('spec/stub', backlog_size: 2)
+
+		subject.each_until(/Done/).to_a
+		subject.send_command 'help'
+		subject.send_command 'stop'
+
+		# fait for backlog to overflow
+		sleep 0.2
+
+		subject.each.to_a.should == [
+			"2011-09-19 22:12:00 [INFO] Saving chunks", 
+			"2011-09-19 22:12:00 [INFO] Saving chunks"
+		]
+	end
+
+	describe 'process output enumeration' do
 		it 'should allow iterating the output lines' do
+			subject.send_command 'stop'
 			lines_count = 0
 			subject.each do |line|
 				lines_count += 1
 			end
-			lines_count.should == 20
+			lines_count.should == 23
 		end
 		
 		it 'should allow iterating the output lines with enumerator' do
-			subject.each.to_a.length.should == 20
-		end
-
-		it 'should be Enumerable' do
-			subject.should respond_to :take
-			subject.take(2).should == ["151 recipes", "16 achievements"]
-		end
-
-		it 'should return nothing if iterating on dead process' do
-			subject.each.to_a.length.should == 20
-			subject.each.to_a.should be_empty
+			subject.send_command 'stop'
+			subject.each.to_a.length.should == 23
 		end
 
 		it 'should allow iteration until pattern is found in message' do
@@ -42,69 +56,103 @@ describe TTYProcessCtl do
 
 		it 'should allow waiting for message matching pattern' do
 			subject.wait_until(/NOT ENOUGH RAM/)
+			subject.send_command 'stop'
 			subject.each.to_a.first.should == "2011-09-10 12:58:55 [WARNING] To start the server with more ram, launch it as \"java -Xmx1024M -Xms1024M -jar minecraft_server.jar\""
+		end
+
+		it 'should return nothing if iterating on dead process' do
+			subject.send_command 'stop'
+			subject.each.to_a.length.should == 23
+			subject.should_not be_alive
+			subject.each.to_a.should be_empty
+		end
+
+		it 'should allow flushing backlog messages' do
+			subject.each_until(/SERVER IS RUNNING/).to_a
+			sleep 0.2
+
+			subject.flush
+
+			subject.send_command 'list'
+			subject.each_until(/Connected players/).to_a.should == ["2011-09-20 14:42:04 [INFO] Connected players: kazuya"]
 		end
 	end
 
 	describe 'on message callbacks' do
-		it 'should call on message callback' do
-			messages = []
-			subject.on do |message|
-				messages << message
+		describe 'when enumerating' do
+			it 'should call on message callback' do
+				messages = []
+				subject.on do |message|
+					messages << message
+				end
+
+				subject.wait_until(/NOT ENOUGH RAM/)
+				messages.should == [
+					"151 recipes", 
+					"16 achievements", 
+					"2011-09-10 12:58:55 [INFO] Starting minecraft server version Beta 1.7.3", 
+					"2011-09-10 12:58:55 [WARNING] **** NOT ENOUGH RAM!"
+				]
 			end
 
-			subject.wait_until(/NOT ENOUGH RAM/)
-			messages.should == [
-				"151 recipes", 
-				"16 achievements", 
-				"2011-09-10 12:58:55 [INFO] Starting minecraft server version Beta 1.7.3", 
-				"2011-09-10 12:58:55 [WARNING] **** NOT ENOUGH RAM!"
-			]
+			it 'should call on message callback if given regexp matches the message' do
+				messages = []
+				subject.on(/recipes|achievements/) do |message|
+					messages << message
+				end
+
+				subject.wait_until(/NOT ENOUGH RAM/)
+				messages.should == [
+					"151 recipes", 
+					"16 achievements"
+				]
+			end
 		end
 
-		it 'should call on message callback if given regexp matches the message' do
-			messages = []
-			subject.on(/recipes|achievements/) do |message|
-				messages << message
+		describe 'when polling' do
+			it 'should call on message callback' do
+				messages = []
+				subject.on do |message|
+					messages << message
+				end
+
+				subject.send_command 'stop'
+				subject.poll!(timeout: 1.0)
+
+				messages.length.should == 23
 			end
 
-			subject.wait_until(/NOT ENOUGH RAM/)
-			messages.should == [
-				"151 recipes", 
-				"16 achievements"
-			]
+			it 'should call on message callback if given regexp matches the message' do
+				messages = []
+				subject.on(/recipes|achievements/) do |message|
+					messages << message
+				end
+
+					subject.send_command 'stop'
+					subject.poll!(timeout: 1.0)
+
+				messages.should == [
+					"151 recipes", 
+					"16 achievements"
+				]
+			end
 		end
 
-		it 'should work with polling' do
-			messages = []
-			subject.on(/recipes|achievements/) do |message|
-				messages << message
+		describe 'when flushing' do
+			it 'should call on message callback if given regexp matches the message' do
+				messages = []
+				subject.on(/recipes|achievements/) do |message|
+					messages << message
+				end
+
+				sleep 1.0
+				subject.flush
+
+				messages.should == [
+					"151 recipes", 
+					"16 achievements"
+				]
 			end
-
-			# poll 3 messages
-			3.times {
-				subject.poll(timeout: 1.0)
-			}
-
-			messages.should == [
-				"151 recipes", 
-				"16 achievements"
-			]
-		end
-
-		it 'should work with flushing' do
-			messages = []
-			subject.on(/recipes|achievements/) do |message|
-				messages << message
-			end
-
-			sleep 1.0
-			subject.flush
-
-			messages.should == [
-				"151 recipes", 
-				"16 achievements"
-			]
 		end
 
 		describe 'closing' do
@@ -166,30 +214,6 @@ describe TTYProcessCtl do
 		end
 	end
 
-	describe 'messages' do
-		subject do
-			TTYProcessCtl.new('spec/stub --exit')
-		end
-
-		describe 'flushing' do
-			subject do
-				TTYProcessCtl.new('spec/stub')
-			end
-
-			it 'should allow flushing queued messages before iteration' do
-				subject.each_until(/SERVER IS RUNNING/).to_a
-				sleep 0.2
-
-				subject.flush
-
-				subject.send_command 'list'
-				subject.each_until(/Connected players/).to_a.should == ["2011-09-20 14:42:04 [INFO] Connected players: kazuya"]
-
-				subject.send_command 'stop'
-			end
-		end
-	end
-
 	describe 'process status query' do
 		it 'should allow querying if process is alive' do
 			subject.should be_alive
@@ -215,48 +239,34 @@ describe TTYProcessCtl do
 		end
 	end
 
-	describe 'limiting' do
-		it 'should allow defining maximum number of messages that can be queued' do
-			subject = TTYProcessCtl.new('spec/stub', max_queue_length: 2)
-
-			subject.each_until(/Done/).to_a
-			subject.send_command 'help'
-			subject.send_command 'stop'
-
-			sleep 0.2
-			subject.each.to_a.length.should == 2
-			subject.wait_exit
-		end
-	end
-
 	describe 'timeout' do
-		after :each do
-			subject.send_command 'stop' if subject.alive?
-			subject.wait_exit
+		subject do
+			# wait for process to be ready and delay each message printout by 0.1 second
+			TTYProcessCtl.new('spec/stub --delay 0.01').wait_until(/151 recipes/, timeout: 1)
 		end
 
 		describe 'each calls with block' do
 			it 'should raise TTYProcessCtl::Timeout on timieout' do
 				expect {
-					subject.each(timeout: 0.1) {}
+					subject.each(timeout: 0.1){}
 				}.to raise_error TTYProcessCtl::Timeout
 
 				expect {
-					subject.each_until(/bogous/, timeout: 0.1) {}
+					subject.each_until(/bogous/, timeout: 0.1){}
 				}.to raise_error TTYProcessCtl::Timeout
 
 				expect {
-					subject.each_until_exclude(/bogous/, timeout: 0.1) {}
+					subject.each_until_exclude(/bogous/, timeout: 0.1){}
 				}.to raise_error TTYProcessCtl::Timeout
 			end
 
 			it 'should not raise error if they return before timeout' do
 				expect {
-					subject.each_until(/recipes/, timeout: 1) {}
+					subject.each_until(/achievements/, timeout: 1){}
 				}.to_not raise_error TTYProcessCtl::Timeout
 
 				expect {
-					subject.each_until_exclude(/achievements/, timeout: 1) {}
+					subject.each_until_exclude(/NOT ENOUGH RAM/, timeout: 1){}
 				}.to_not raise_error TTYProcessCtl::Timeout
 
 				expect {
@@ -282,11 +292,11 @@ describe TTYProcessCtl do
 
 			it 'should not raise error if they return before timeout' do
 				expect {
-					subject.each_until(/recipes/, timeout: 1).to_a
+					subject.each_until(/achievements/, timeout: 1).to_a
 				}.to_not raise_error TTYProcessCtl::Timeout
 
 				expect {
-					subject.each_until_exclude(/achievements/, timeout: 1).to_a
+					subject.each_until_exclude(/NOT ENOUGH RAM/, timeout: 1).to_a
 				}.to_not raise_error TTYProcessCtl::Timeout
 
 				expect {
@@ -321,17 +331,15 @@ describe TTYProcessCtl do
 	end
 
 	describe 'chaining' do
-		subject do
-			TTYProcessCtl.new('spec/stub --exit')
-		end
-
 		it 'should work with each methods' do
+			subject.send_command 'stop'
 			subject.each_until(/recipes/){}.should == subject
 			subject.each_until_exclude(/achievements/){}.should == subject
 			subject.each{}.should == subject
 		end
 		
 		it 'should work with wait methods' do
+			subject.send_command 'stop'
 			subject.wait_until(/Done/){}.should == subject
 			subject.wait_exit{}.should == subject
 		end

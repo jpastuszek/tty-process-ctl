@@ -4,8 +4,7 @@ require 'pty'
 require 'io/console'
 
 class TTYProcessCtl
-	class Timeout < Timeout::Error
-	end
+	Timeout = Class.new(Timeout::Error)
 
 	class Listener
 		def initialize(&callback)
@@ -14,13 +13,13 @@ class TTYProcessCtl
 
 		def call(message)
 			@callback.call(message)
-		rescue LocalJumpError
+		rescue LocalJumpError => error
 			# brake in listener
-			close
+			close if error.reason == :break
 		end
 
 		def on_close(&callback)
-			@on_close = callback
+			@on_close = callback unless closed?
 			self
 		end
 
@@ -37,11 +36,10 @@ class TTYProcessCtl
 	include Enumerable
 
 	def initialize(command, options = {})
-		@max_queue_length = options[:max_queue_length] || 4000
-		@max_messages = options[:max_messages] || 4000
+		@backlog_size = options[:backlog_size] || 4000
 		@command = command
-		@listeners = []
 
+		@listeners = []
 		@out_queue = Queue.new
 
 		@r, @w, @pid = PTY.spawn(@command)
@@ -91,7 +89,7 @@ class TTYProcessCtl
 			end
 			self
 		ensure
-			# one time use so close it after we have finished
+			# make sure we close the listener when each exits
 			listener.close
 		end
 	end
@@ -119,7 +117,7 @@ class TTYProcessCtl
 	end
 
 	def wait_exit(options = {})
-		poll(options)
+		poll!(options)
 		@thread.join
 		self
 	end
@@ -178,7 +176,7 @@ class TTYProcessCtl
 
 	def enqueue_message(message)
 		@out_queue << message
-		@out_queue.pop while @out_queue.length > @max_queue_length
+		@out_queue.pop while @out_queue.length > @backlog_size
 	end
 
 	def enqueue_end
