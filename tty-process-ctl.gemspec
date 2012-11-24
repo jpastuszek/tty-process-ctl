@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = "tty-process-ctl"
-  s.version = "0.4.0"
+  s.version = "0.5.0"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Jakub Pastuszek"]
-  s.date = "2012-11-18"
+  s.date = "2012-11-24"
   s.description = "This gem was created to enable control of interactive terminal applications. It is using pseudo tty to communicate with the process via simple API."
   s.email = "jpastuszek@gmail.com"
   s.extra_rdoc_files = [
@@ -44,6 +44,7 @@ Gem::Specification.new do |s|
     s.specification_version = 3
 
     if Gem::Version.new(Gem::VERSION) >= Gem::Version.new('1.2.0') then
+      s.add_development_dependency(%q<rake>, ["~> 0.9"])
       s.add_development_dependency(%q<rspec>, ["~> 2.8"])
       s.add_development_dependency(%q<rdoc>, ["~> 3.12"])
       s.add_development_dependency(%q<bundler>, ["~> 1.1"])
@@ -51,6 +52,7 @@ Gem::Specification.new do |s|
       s.add_development_dependency(%q<simplecov>, [">= 0"])
       s.add_development_dependency(%q<cli>, ["~> 1.0"])
     else
+      s.add_dependency(%q<rake>, ["~> 0.9"])
       s.add_dependency(%q<rspec>, ["~> 2.8"])
       s.add_dependency(%q<rdoc>, ["~> 3.12"])
       s.add_dependency(%q<bundler>, ["~> 1.1"])
@@ -59,6 +61,7 @@ Gem::Specification.new do |s|
       s.add_dependency(%q<cli>, ["~> 1.0"])
     end
   else
+    s.add_dependency(%q<rake>, ["~> 0.9"])
     s.add_dependency(%q<rspec>, ["~> 2.8"])
     s.add_dependency(%q<rdoc>, ["~> 3.12"])
     s.add_dependency(%q<bundler>, ["~> 1.1"])
