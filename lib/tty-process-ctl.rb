@@ -14,6 +14,9 @@ class TTYProcessCtl
 
 		def call(message)
 			@callback.call(message)
+		rescue LocalJumpError
+			# brake in listener
+			close
 		end
 
 		def on_close(&callback)
@@ -23,6 +26,11 @@ class TTYProcessCtl
 
 		def close
 			@on_close.call(self) if @on_close
+			@closed = true
+		end
+
+		def closed?
+			@closed
 		end
 	end
 
@@ -66,18 +74,26 @@ class TTYProcessCtl
 		raise IOError.new("process '#{@command}' (pid: #{@pid}) not accepting input")
 	end
 
+	def on(regexp = nil, &callback)
+		# return listender to user so he can close it after use
+		listener do |message|
+			next if regexp and message !~ regexp
+			callback.call(message)
+		end
+	end
+
 	def each(options = {}, &block)
 		return enum_for(:each, options) unless block
-
-		listener = Listener.new(&block).on_close do |listener|
-			@listeners.delete(listener)
+		listener = listener(&block)
+		begin
+			timeout(options[:timeout]) do
+				true while not listener.closed? and poll
+			end
+			self
+		ensure
+			# one time use so close it after we have finished
+			listener.close
 		end
-		@listeners << listener
-
-		poll(options)
-	ensure
-		# one time use so close it after we have finished
-		listener.close if listener
 	end
 
 	def each_until(pattern, options = {})
@@ -110,11 +126,14 @@ class TTYProcessCtl
 
 	def poll(options = {})
 		timeout(options[:timeout]) do
-			while !@out_queue.empty? or alive? do
-				process_message || break
-			end
+			return process_message
 		end
-		self
+	end
+
+	def poll!(options = {})
+		timeout(options[:timeout]) do
+			true while process_message
+		end
 	end
 
 	def flush
@@ -132,6 +151,14 @@ class TTYProcessCtl
 		end
 	end
 
+	def listener(&block)
+		listener = Listener.new(&block).on_close do |listener|
+			@listeners.delete(listener)
+		end
+		@listeners << listener
+		listener
+	end
+
 	def process_message_no_block
 		process_message(true)
 	rescue ThreadError
@@ -139,10 +166,12 @@ class TTYProcessCtl
 	end
 
 	def process_message(no_block = false)
+		return nil if not alive? and @out_queue.empty?
 		message = @out_queue.pop(no_block)
 		return nil unless message
+		message.freeze
 		@listeners.each do |listener|
-			listener.call(message) or break
+			listener.call(message)
 		end
 		message
 	end

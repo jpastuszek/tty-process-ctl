@@ -46,6 +46,96 @@ describe TTYProcessCtl do
 		end
 	end
 
+	describe 'on message callbacks' do
+		it 'should call on message callback' do
+			messages = []
+			subject.on do |message|
+				messages << message
+			end
+
+			subject.wait_until(/NOT ENOUGH RAM/)
+			messages.should == [
+				"151 recipes", 
+				"16 achievements", 
+				"2011-09-10 12:58:55 [INFO] Starting minecraft server version Beta 1.7.3", 
+				"2011-09-10 12:58:55 [WARNING] **** NOT ENOUGH RAM!"
+			]
+		end
+
+		it 'should call on message callback if given regexp matches the message' do
+			messages = []
+			subject.on(/recipes|achievements/) do |message|
+				messages << message
+			end
+
+			subject.wait_until(/NOT ENOUGH RAM/)
+			messages.should == [
+				"151 recipes", 
+				"16 achievements"
+			]
+		end
+
+		it 'should work with polling' do
+			messages = []
+			subject.on(/recipes|achievements/) do |message|
+				messages << message
+			end
+
+			# poll 3 messages
+			3.times {
+				subject.poll(timeout: 1.0)
+			}
+
+			messages.should == [
+				"151 recipes", 
+				"16 achievements"
+			]
+		end
+
+		it 'should work with flushing' do
+			messages = []
+			subject.on(/recipes|achievements/) do |message|
+				messages << message
+			end
+
+			sleep 1.0
+			subject.flush
+
+			messages.should == [
+				"151 recipes", 
+				"16 achievements"
+			]
+		end
+
+		describe 'closing' do
+			it 'with close method on listener' do
+				counter = 0
+				listener = subject.on do
+					counter += 1
+				end
+
+				subject.poll
+				listener.close
+				subject.poll
+
+				counter.should == 1
+			end
+
+			it 'with break' do
+				counter = 0
+				subject.on do
+					counter += 1
+					break
+				end
+
+				subject.poll
+				subject.poll
+
+				counter.should == 1
+			end
+		end
+	end
+
 	describe 'sending commands' do
 		it 'should allow sending commands to controled process' do
 			subject.send_command 'stop'
