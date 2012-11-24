@@ -15,7 +15,6 @@ class TTYProcessCtl
 		@command = command
 
 		@out_queue = Queue.new
-		@messages = []
 
 		@r, @w, @pid = PTY.spawn(@command)
 		@w.echo = false # disable echoing of commands
@@ -45,10 +44,6 @@ class TTYProcessCtl
 		@w.puts command
 	rescue Errno::EIO
 		raise IOError.new("process '#{@command}' (pid: #{@pid}) not accepting input")
-	end
-
-	def messages
-		@messages
 	end
 
 	def each(options = {})
@@ -111,8 +106,6 @@ class TTYProcessCtl
 	def dequeue(no_block = false)
 		message = @out_queue.pop(no_block)
 		return nil unless message
-		@messages << message
-		@messages.pop while @messages.length > @max_messages
 		message
 	end
 

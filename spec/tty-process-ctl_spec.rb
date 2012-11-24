@@ -81,11 +81,6 @@ describe TTYProcessCtl do
 			TTYProcessCtl.new('spec/stub --exit')
 		end
 
-		it 'should allow access to previously outputed messages' do
-			subject.each.to_a
-			subject.messages.length.should == 20
-		end
-
 		describe 'flushing' do
 			subject do
 				TTYProcessCtl.new('spec/stub')
@@ -141,18 +136,6 @@ describe TTYProcessCtl do
 			sleep 0.2
 			subject.each.to_a.length.should == 2
 			subject.wait_exit
-		end
-
-		it 'should allow defining maximum number of messages that can be remembered' do
-			subject = TTYProcessCtl.new('spec/stub', max_messages: 2)
-
-			subject.each_until(/Done/).to_a
-			subject.send_command 'help'
-			subject.flush
-			subject.send_command 'stop'
-			subject.wait_exit
-
-			subject.messages.length.should == 2
 		end
 	end
 
