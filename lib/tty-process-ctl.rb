@@ -7,12 +7,32 @@ class TTYProcessCtl
 	class Timeout < Timeout::Error
 	end
 
+	class Listener
+		def initialize(&callback)
+			@callback = callback
+		end
+
+		def call(message)
+			@callback.call(message)
+		end
+
+		def on_close(&callback)
+			@on_close = callback
+			self
+		end
+
+		def close
+			@on_close.call(self) if @on_close
+		end
+	end
+
 	include Enumerable
 
 	def initialize(command, options = {})
 		@max_queue_length = options[:max_queue_length] || 4000
 		@max_messages = options[:max_messages] || 4000
 		@command = command
+		@listeners = []
 
 		@out_queue = Queue.new
 
@@ -46,14 +66,18 @@ class TTYProcessCtl
 		raise IOError.new("process '#{@command}' (pid: #{@pid}) not accepting input")
 	end
 
-	def each(options = {})
-		return enum_for(:each, options) unless block_given?
-		timeout(options[:timeout]) do
-			while !@out_queue.empty? or alive? do
-				yield (dequeue or break)
-			end
+	def each(options = {}, &block)
+		return enum_for(:each, options) unless block
+
+		listener = Listener.new(&block).on_close do |listener|
+			@listeners.delete(listener)
 		end
-		self
+		@listeners << listener
+
+		poll(options)
+	ensure
+		# one time use so close it after we have finished
+		listener.close if listener
 	end
 
 	def each_until(pattern, options = {})
@@ -79,17 +103,22 @@ class TTYProcessCtl
 	end
 
 	def wait_exit(options = {})
-		each(options){}
+		poll(options)
 		@thread.join
 		self
 	end
 
-	def flush
-		loop do
-			dequeue(true)
+	def poll(options = {})
+		timeout(options[:timeout]) do
+			while !@out_queue.empty? or alive? do
+				process_message || break
+			end
 		end
 		self
-	rescue ThreadError
+	end
+
+	def flush
+		true while process_message_no_block
 		self
 	end
 
@@ -103,9 +132,18 @@ class TTYProcessCtl
 		end
 	end
 
-	def dequeue(no_block = false)
+	def process_message_no_block
+		process_message(true)
+	rescue ThreadError
+		nil
+	end
+
+	def process_message(no_block = false)
 		message = @out_queue.pop(no_block)
 		return nil unless message
+		@listeners.each do |listener|
+			listener.call(message) or break
+		end
 		message
 	end
 
