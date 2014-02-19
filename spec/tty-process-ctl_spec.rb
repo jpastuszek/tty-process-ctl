@@ -22,11 +22,11 @@ describe TTYProcessCtl do
 		subject.send_command 'help'
 		subject.send_command 'stop'
 
-		# fait for backlog to overflow
+		# wait for backlog to overflow
 		sleep 0.2
 
 		subject.each.to_a.should == [
-			"2011-09-19 22:12:00 [INFO] Saving chunks", 
+			"2011-09-19 22:12:00 [INFO] Saving chunks",
 			"2011-09-19 22:12:00 [INFO] Saving chunks"
 		]
 	end
@@ -40,7 +40,7 @@ describe TTYProcessCtl do
 			end
 			lines_count.should == 23
 		end
-		
+
 		it 'should allow iterating the output lines with enumerator' do
 			subject.send_command 'stop'
 			subject.each.to_a.length.should == 23
@@ -67,6 +67,12 @@ describe TTYProcessCtl do
 			subject.each.to_a.should be_empty
 		end
 
+		it 'should return nothing if iterating on stopped process' do
+			subject.stop
+			subject.should_not be_alive
+			subject.each.to_a.should be_empty
+		end
+
 		it 'should allow flushing backlog messages' do
 			subject.each_until(/SERVER IS RUNNING/).to_a
 			sleep 0.2
@@ -88,9 +94,9 @@ describe TTYProcessCtl do
 
 				subject.wait_until(/NOT ENOUGH RAM/)
 				messages.should == [
-					"151 recipes", 
-					"16 achievements", 
-					"2011-09-10 12:58:55 [INFO] Starting minecraft server version Beta 1.7.3", 
+					"151 recipes",
+					"16 achievements",
+					"2011-09-10 12:58:55 [INFO] Starting minecraft server version Beta 1.7.3",
 					"2011-09-10 12:58:55 [WARNING] **** NOT ENOUGH RAM!"
 				]
 			end
@@ -103,7 +109,7 @@ describe TTYProcessCtl do
 
 				subject.wait_until(/NOT ENOUGH RAM/)
 				messages.should == [
-					"151 recipes", 
+					"151 recipes",
 					"16 achievements"
 				]
 			end
@@ -117,7 +123,7 @@ describe TTYProcessCtl do
 				end
 
 				subject.send_command 'stop'
-				subject.poll!(timeout: 1.0)
+				subject.poll!(timeout: 4)
 
 				messages.length.should == 23
 			end
@@ -129,10 +135,10 @@ describe TTYProcessCtl do
 				end
 
 					subject.send_command 'stop'
-					subject.poll!(timeout: 1.0)
+					subject.poll!(timeout: 4)
 
 				messages.should == [
-					"151 recipes", 
+					"151 recipes",
 					"16 achievements"
 				]
 			end
@@ -149,7 +155,7 @@ describe TTYProcessCtl do
 				subject.flush
 
 				messages.should == [
-					"151 recipes", 
+					"151 recipes",
 					"16 achievements"
 				]
 			end
@@ -242,7 +248,7 @@ describe TTYProcessCtl do
 	describe 'timeout' do
 		subject do
 			# wait for process to be ready and delay each message printout by 0.1 second
-			TTYProcessCtl.new('spec/stub --delay 0.01').wait_until(/151 recipes/, timeout: 1)
+			TTYProcessCtl.new('spec/stub --delay 0.01').wait_until(/151 recipes/, timeout: 4)
 		end
 
 		describe 'each calls with block' do
@@ -262,15 +268,15 @@ describe TTYProcessCtl do
 
 			it 'should not raise error if they return before timeout' do
 				expect {
-					subject.each_until(/achievements/, timeout: 1){}
+					subject.each_until(/achievements/, timeout: 4){}
 				}.to_not raise_error TTYProcessCtl::Timeout
 
 				expect {
-					subject.each_until_exclude(/NOT ENOUGH RAM/, timeout: 1){}
+					subject.each_until_exclude(/NOT ENOUGH RAM/, timeout: 4){}
 				}.to_not raise_error TTYProcessCtl::Timeout
 
 				expect {
-					subject.each(timeout: 1) { break }
+					subject.each(timeout: 4) { break }
 				}.to_not raise_error TTYProcessCtl::Timeout
 			end
 		end
@@ -292,15 +298,15 @@ describe TTYProcessCtl do
 
 			it 'should not raise error if they return before timeout' do
 				expect {
-					subject.each_until(/achievements/, timeout: 1).to_a
+					subject.each_until(/achievements/, timeout: 4).to_a
 				}.to_not raise_error TTYProcessCtl::Timeout
 
 				expect {
-					subject.each_until_exclude(/NOT ENOUGH RAM/, timeout: 1).to_a
+					subject.each_until_exclude(/NOT ENOUGH RAM/, timeout: 4).to_a
 				}.to_not raise_error TTYProcessCtl::Timeout
 
 				expect {
-					subject.each(timeout: 1).first
+					subject.each(timeout: 4).first
 				}.to_not raise_error TTYProcessCtl::Timeout
 			end
 		end
@@ -318,13 +324,13 @@ describe TTYProcessCtl do
 
 			it 'should not raise error if they return before timeout' do
 				expect {
-					subject.wait_until(/Done/, timeout: 1)
+					subject.wait_until(/Done/, timeout: 4)
 				}.to_not raise_error TTYProcessCtl::Timeout
 
 				subject.send_command 'stop'
 
 				expect {
-					subject.wait_exit(timeout: 1)
+					subject.wait_exit(timeout: 4)
 				}.to_not raise_error TTYProcessCtl::Timeout
 			end
 		end
@@ -337,7 +343,7 @@ describe TTYProcessCtl do
 			subject.each_until_exclude(/achievements/){}.should == subject
 			subject.each{}.should == subject
 		end
-		
+
 		it 'should work with wait methods' do
 			subject.send_command 'stop'
 			subject.wait_until(/Done/){}.should == subject
