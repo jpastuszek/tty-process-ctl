@@ -111,7 +111,7 @@ class TTYProcessCtl
 
 	def send_command(command)
 		@w.puts command
-	rescue Errno::EIO
+	rescue Errno::EIO, IOError
 		raise IOError.new("process '#{@command}' (pid: #{@pid}) not accepting input")
 	end
 
@@ -156,7 +156,12 @@ class TTYProcessCtl
 	end
 
 	def wait_until(pattern, options = {})
-		each_until(pattern, options){}
+		last_message = nil
+		each_until(pattern, options) do |message|
+			last_message = message
+		end
+		yield last_message if block_given?
+		self
 	end
 
 	def wait_exit(options = {})

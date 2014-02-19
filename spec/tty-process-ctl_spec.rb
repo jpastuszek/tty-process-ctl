@@ -6,7 +6,10 @@ describe TTYProcessCtl do
 	end
 
 	after :each do
-		subject.send_command 'stop' if subject.alive?
+		begin
+			subject.send_command 'stop' if subject.alive?
+		rescue IOError
+		end
 		subject.wait_exit
 	end
 
@@ -58,6 +61,15 @@ describe TTYProcessCtl do
 			subject.wait_until(/NOT ENOUGH RAM/)
 			subject.send_command 'stop'
 			subject.each.to_a.first.should == "2011-09-10 12:58:55 [WARNING] To start the server with more ram, launch it as \"java -Xmx1024M -Xms1024M -jar minecraft_server.jar\""
+		end
+
+		it 'should allow getting the message we were waiting for' do
+			message = nil
+			subject.wait_until(/NOT ENOUGH RAM/) do |msg|
+				message = msg
+			end
+			subject.send_command 'stop'
+			message.should =~ /NOT ENOUGH RAM/
 		end
 
 		it 'should return nothing if iterating on dead process' do
